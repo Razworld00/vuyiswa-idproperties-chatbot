@@ -1,0 +1,19 @@
+# Ignore logs
+app/logs/
+
+# Ignore temporary data
+data/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore environment-specific files
+.env
+
+# Ignore IDE files
+.vscode/
+.idea/
+
+# Ignore macOS files
+.DS_Store

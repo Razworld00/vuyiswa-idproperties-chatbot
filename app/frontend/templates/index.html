@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ID Properties Chatbot</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'brand-blue': '#1E3A8A',
+            'brand-light': '#DBEAFE',
+            'brand-gray': '#F7F7F7',
+          },
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-brand-gray font-sans">
+  <div id="root"></div>
+  {% raw %}
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [data, setData] = useState("");
+      const [url, setUrl] = useState("");
+      const [chatInput, setChatInput] = useState("");
+      const [chatHistory, setChatHistory] = useState(() => {
+        const saved = localStorage.getItem('chatHistory');
+        return saved ? JSON.parse(saved) : [];
+      });
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState(null);
+
+      useEffect(() => {
+        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+      }, [chatHistory]);
+
+      const handleUrlSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+          const response = await fetch('/scrape', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+          });
+          const result = await response.json();
+          if (result.text) {
+            setData(result.text);
+          } else {
+            setError('Error scraping URL: ' + result.error);
+          }
+        } catch (error) {
+          setError('Error scraping URL: ' + error.message);
+        }
+        setLoading(false);
+      };
+
+      const handleDataUpload = async (e) => {
+        const file = e.target.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        setLoading(true);
+        setError(null);
+        try {
+          const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          const result = await response.json();
+          if (result.text) {
+            setData(result.text);
+          } else {
+            setError('Error uploading file: ' + result.error);
+          }
+        } catch (error) {
+          setError('Error uploading file: ' + error.message);
+        }
+        setLoading(false);
+      };
+
+      const handleChatSubmit = async (e) => {
+        e.preventDefault();
+        if (!chatInput.trim()) return;
+        
+        const userMessage = chatInput.trim();
+        setChatHistory(prev => [...prev, { sender: 'user', text: userMessage }]);
+        setChatInput("");
+        setLoading(true);
+        setError(null);
+
+        try {
+          const response = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: userMessage }),
+          });
+          const result = await response.json();
+          if (result.error) {
+            setError('Error: ' + result.error);
+            setChatHistory(prev => [...prev, { sender: 'bot', text: 'Sorry, I encountered an error. Please try again.' }]);
+          } else {
+            setChatHistory(prev => [...prev, { sender: 'bot', text: result.response }]);
+          }
+        } catch (error) {
+          setError('Error: ' + error.message);
+          setChatHistory(prev => [...prev, { sender: 'bot', text: 'Sorry, I encountered an error. Please try again.' }]);
+        }
+        setLoading(false);
+      };
+
+      const clearChatHistory = () => {
+        setChatHistory([]);
+        localStorage.removeItem('chatHistory');
+      };
+
+      return (
+        <div className="flex flex-col min-h-screen">
+          {/* Header */}
+          <header className="bg-brand-blue text-white py-4 shadow-md">
+            <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <img src="/static/images/logo.png" alt="ID Properties Logo" className="h-10 w-10 object-contain" />
+                <h1 className="text-2xl font-bold">ID Properties Chatbot</h1>
+              </div>
+              <nav>
+                <a href="https://idproperties.co.za" target="_blank" className="text-white hover:text-brand-light transition duration-300">
+                  Visit Our Website
+                </a>
+              </nav>
+            </div>
+          </header>
+
+          {/* Homepage Banner */}
+          <div className="relative bg-brand-light">
+            <img src="/static/images/banner.jpg" alt="Real Estate Banner" className="w-full h-64 md:h-96 object-cover" />
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+              <h2 className="text-3xl md:text-5xl font-bold text-white text-center">Find Your Dream Home with ID Properties</h2>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <main className="flex-1 max-w-4xl mx-auto px-4 py-8">
+            {/* Agent Contact Section */}
+            <div className="mb-8 bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300">
+              <div className="flex items-center space-x-3 mb-4">
+                <img src="/static/images/agent.jpg" alt="Vuyiswa Sauli-Mkhokeli" className="h-12 w-12 rounded-full object-cover" />
+                <h3 className="text-lg font-medium text-gray-700">Meet Our Agent: Vuyiswa Sauli-Mkhokeli</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-gray-600"><span className="font-semibold">Service Areas:</span> Cintsa, East London</p>
+                  <p className="text-gray-600"><span className="font-semibold">Mobile:</span> 066 085 8828</p>
+                  <p className="text-gray-600"><span className="font-semibold">Email:</span> <a href="mailto:vuyiswa@idproperties.co.za" className="text-brand-blue hover:underline">vuyiswa@idproperties.co.za</a></p>
+                  <p className="text-gray-600"><span className="font-semibold">Website:</span> <a href="https://idproperties.co.za" target="_blank" className="text-brand-blue hover:underline">www.idproperties.co.za</a></p>
+                </div>
+                <div>
+                  <p className="text-gray-600"><span className="font-semibold">Office Address:</span> 14 Athlone Crescent, Selborne, East London</p>
+                  <p className="text-gray-600"><span className="font-semibold">Office Phone:</span> 043 721 1280</p>
+                  <p className="text-gray-600"><span className="font-semibold">Office Hours:</span> Mon - Fri: 9:00 - 18:00</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-semibold text-gray-800">Welcome to Your Property Assistant</h2>
+              <p className="text-gray-600 mt-2">Ask about properties, upload documents, or scrape data to get started!</p>
+            </div>
+
+            <div className="mb-8 bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300">
+              <div className="flex items-center space-x-3 mb-4">
+                <svg className="h-6 w-6 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+                <label className="block text-lg font-medium text-gray-700">Enter URL to Scrape:</label>
+              </div>
+              <form onSubmit={handleUrlSubmit}>
+                <div className="flex space-x-4">
+                  <input 
+                    type="url" 
+                    value={url} 
+                    onChange={(e) => setUrl(e.target.value)} 
+                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue transition duration-300" 
+                    placeholder="https://idproperties.co.za"
+                    required
+                  />
+                  <button 
+                    type="submit" 
+                    className="bg-brand-blue text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span>{loading ? 'Scraping...' : 'Scrape URL'}</span>
+                  </button>
+                </div>
+              </form>
+              {error && <p className="mt-3 text-red-500 flex items-center space-x-2">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{error}</span>
+              </p>}
+            </div>
+
+            <div className="mb-8 bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300">
+              <div className="flex items-center space-x-3 mb-4">
+                <svg className="h-6 w-6 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <label className="block text-lg font-medium text-gray-700">Upload Data (e.g., text file, PDF):</label>
+              </div>
+              <input 
+                type="file" 
+                onChange={handleDataUpload} 
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:bg-brand-blue file:text-white file:hover:bg-blue-700 file:transition file:duration-300"
+                disabled={loading}
+              />
+              {data && <p className="mt-3 text-green-600 flex items-center space-x-2">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Data loaded successfully!</span>
+              </p>}
+              {error && <p className="mt-3 text-red-500 flex items-center space-x-2">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{error}</span>
+              </p>}
+            </div>
+
+            <div className="mb-8 bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center space-x-3">
+                  <svg className="h-6 w-6 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <label className="block text-lg font-medium text-gray-700">Chat with ID Properties:</label>
+                </div>
+                <button 
+                  onClick={clearChatHistory} 
+                  className="text-sm text-red-500 hover:text-red-700 flex items-center space-x-1"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>Clear Chat</span>
+                </button>
+              </div>
+
+              <div className="h-80 overflow-y-auto mb-6 p-4 bg-brand-light rounded-lg border border-gray-200">
+                {chatHistory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                    <svg className="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <p>Start a conversation by sending a message below!</p>
+                  </div>
+                ) : (
+                  <>
+                    {chatHistory.map((message, index) => (
+                      <div 
+                        key={index} 
+                        className={`mb-4 flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div 
+                          className={`max-w-sm p-4 rounded-lg shadow-md ${
+                            message.sender === 'user' 
+                              ? 'bg-brand-blue text-white' 
+                              : 'bg-white text-gray-800 border border-gray-200'
+                          }`}
+                        >
+                          <p className="text-sm">{message.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {loading && (
+                      <div className="flex justify-start mb-4">
+                        <div className="max-w-sm p-4 rounded-lg bg-white border border-gray-200 flex items-center space-x-2">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-brand-blue rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-2 h-2 bg-brand-blue rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-2 h-2 bg-brand-blue rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+                          <p className="text-sm text-gray-500">Thinking...</p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <form onSubmit={handleChatSubmit}>
+                <div className="flex space-x-4">
+                  <input 
+                    type="text" 
+                    value={chatInput} 
+                    onChange={(e) => setChatInput(e.target.value)} 
+                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue transition duration-300" 
+                    placeholder="Ask about properties, rentals, or more..."
+                    disabled={loading}
+                  />
+                  <button 
+                    type="submit" 
+                    className="bg-brand-blue text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    <span>{loading ? 'Processing...' : 'Send'}</span>
+                  </button>
+                </div>
+              </form>
+              {error && <p className="mt-3 text-red-500 flex items-center space-x-2">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{error}</span>
+              </p>}
+            </div>
+          </main>
+
+          <footer className="bg-brand-blue text-white py-8">
+            <div className="max-w-6xl mx-auto px-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <img src="/static/images/logo.png" alt="ID Properties Logo" className="h-10 w-10 object-contain" />
+                    <h3 className="text-xl font-bold">ID Properties</h3>
+                  </div>
+                  <p className="text-sm">We are a family-oriented agency, which separates us from the rest.</p>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+                  <p className="text-sm flex items-center space-x-2">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <span>Phone: 043 721 1280</span>
+                  </p>
+                  <p className="text-sm flex items-center space-x-2 mt-2">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>Email: <a href="mailto:info@idproperties.co.za" className="hover:text-brand-light transition duration-300">info@idproperties.co.za</a></span>
+                  </p>
+                  <p className="text-sm flex items-center space-x-2 mt-2">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>Address: 14 Athlone Crescent, Selborne, East London</span>
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Stay Connected</h3>
+                  <p className="text-sm mb-4">Subscribe to our newsletter for updates!</p>
+                  <div className="flex space-x-2">
+                    <input 
+                      type="email" 
+                      placeholder="Your email" 
+                      className="w-full p-2 border rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-light transition duration-300"
+                      disabled
+                    />
+                    <button 
+                      className="bg-brand-light text-brand-blue py-2 px-4 rounded-lg hover:bg-blue-200 transition duration-300"
+                      disabled
+                    >
+                      Subscribe
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 border-t border-brand-light pt-4 flex flex-col md:flex-row justify-between items-center">
+                <div className="flex space-x-4 mb-4 md:mb-0">
+                  <a href="#" className="hover:text-brand-light transition duration-300">
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" />
+                    </svg>
+                  </a>
+                  <a href="#" className="hover:text-brand-light transition duration-300">
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-1.337-.479-2.25-1.677-2.25-1.832 0-2.923 1.235-2.923 2.25v5.604h-3v-11h3v1.548c.432-.67 1.203-1.548 2.923-1.548 2.141 0 3.677 1.398 3.677 4.398v6.602z" />
+                    </svg>
+                  </a>
+                  <a href="#" className="hover:text-brand-light transition duration-300">
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                    </svg>
+                  </a>
+                  <a href="#" className="hover:text-brand-light transition duration-300">
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19.199 2h-14.398c-2.597 0-4.691 2.125-4.691 4.725v11.55c0 2.6 2.094 4.725 4.691 4.725h14.398c2.594 0 4.691-2.125 4.691-4.725v-11.55c0-2.6-2.097-4.725-4.691-4.725zm-1.519 15.293h-3.894v-3.897c0-.929-.331-1.563-1.159-1.563-.632 0-1.009.427-1.174.838-.06.147-.075.353-.075.559v4.063h-3.894v-8.215h3.894v1.072c.516-.929 1.366-1.72 3.157-1.72 2.316 0 4.145 1.513 4.145 4.769v4.094zm-11.18-9.287c-.825 0-1.494-.672-1.494-1.5 0-.825.669-1.5 1.494-1.5s1.494.675 1.494 1.5c0 .828-.669 1.5-1.494 1.5zm1.944 9.287h-3.894v-8.215h3.894v8.215z" />
+                    </svg>
+                  </a>
+                  <a href="#" className="hover:text-brand-light transition duration-300">
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.5 16.75h-11c-.414 0-.75-.336-.75-.75v-8.5c0-.414.336-.75.75-.75h11c.414 0 .75.336.75.75v8.5c0 .414-.336.75-.75.75zm-4.5-13.5c-2.761 0-5 2.239-5 5 0 2.761 2.239 5 5 5s5-2.239 5-5c0-2.761-2.239-5-5-5zm0 8c-1.657 0-3-1.343-3-3s1.343-3 3-3 3 1.343 3 3-1.343 3-3 3z" />
+                    </svg>
+                  </a>
+                </div>
+                <p className="text-sm">
+                  © 2025 ID Properties Pty Ltd. All rights reserved. | ID Properties by: Raznet Solutions (<a href="mailto:bathie28@gmail.com" className="hover:text-brand-light transition duration-300">bathie28@gmail.com</a>)
+                </p>
+              </div>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+  {% endraw %}
+</body>
+</html>
